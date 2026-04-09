@@ -435,7 +435,7 @@ export default function ReadingTrackerPage() {
                 <div className="text-center py-8 bg-muted/40 rounded-2xl border-2 border-dashed border-muted">
                   <span className="text-6xl block mb-4">{"😢"}</span>
                   <p className="text-xl font-bold text-muted-foreground mb-2">
-                    אין שחקנים ב��בוצה
+                    אין שחקנים בקבוצה
                   </p>
                   <p className="text-lg text-muted-foreground">
                     {"🏪"} קנו שחקנים מהחנות! {"💰"}
