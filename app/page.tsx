@@ -26,12 +26,37 @@ interface MatchResult {
   myRating: number
 }
 
-// Initial mock data for players
-const initialPlayers: Player[] = [
-  { id: 1, name: "רונאלדו", rating: 92 },
-  { id: 2, name: "מסי", rating: 91 },
-  { id: 3, name: "אמבפה", rating: 89 },
-]
+interface UserData {
+  books: Book[]
+  players: Player[]
+}
+
+type UserId = "roei" | "yair"
+
+// Initial mock data for players (different for each user)
+const initialUserData: Record<UserId, UserData> = {
+  roei: {
+    books: [],
+    players: [
+      { id: 1, name: "רונאלדו", rating: 92 },
+      { id: 2, name: "מסי", rating: 91 },
+      { id: 3, name: "אמבפה", rating: 89 },
+    ],
+  },
+  yair: {
+    books: [],
+    players: [
+      { id: 1, name: "הולנד", rating: 90 },
+      { id: 2, name: "בלינגהאם", rating: 88 },
+      { id: 3, name: "סאקה", rating: 86 },
+    ],
+  },
+}
+
+const userNames: Record<UserId, string> = {
+  roei: "רועי",
+  yair: "יאיר",
+}
 
 // Random opponent names
 const opponentNames = [
@@ -46,12 +71,16 @@ const opponentNames = [
 ]
 
 export default function ReadingTrackerPage() {
-  const [books, setBooks] = useState<Book[]>([])
-  const [players, setPlayers] = useState<Player[]>(initialPlayers)
+  const [currentUser, setCurrentUser] = useState<UserId>("roei")
+  const [userData, setUserData] = useState<Record<UserId, UserData>>(initialUserData)
   const [bookName, setBookName] = useState("")
   const [bookPages, setBookPages] = useState("")
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
+
+  // Get current user data
+  const books = userData[currentUser].books
+  const players = userData[currentUser].players
 
   // Calculate total coins
   const totalCoins = books.reduce((sum, book) => sum + book.coins, 0)
@@ -62,6 +91,14 @@ export default function ReadingTrackerPage() {
   // Calculate coins for a book (10 base + 1 per 10 pages)
   const calculateCoins = (pages: number) => {
     return 10 + Math.floor(pages / 10)
+  }
+
+  // Switch user
+  const switchUser = (userId: UserId) => {
+    setCurrentUser(userId)
+    setMatchResult(null)
+    setBookName("")
+    setBookPages("")
   }
 
   // Add a new book
@@ -78,7 +115,13 @@ export default function ReadingTrackerPage() {
       coins: calculateCoins(pages),
     }
 
-    setBooks([...books, newBook])
+    setUserData((prev) => ({
+      ...prev,
+      [currentUser]: {
+        ...prev[currentUser],
+        books: [...prev[currentUser].books, newBook],
+      },
+    }))
     setBookName("")
     setBookPages("")
   }
@@ -109,7 +152,7 @@ export default function ReadingTrackerPage() {
     <main className="min-h-screen bg-background p-4 md:p-8">
       <div className="mx-auto max-w-4xl">
         {/* Header */}
-        <header className="mb-8 text-center">
+        <header className="mb-6 text-center">
           <h1 className="text-5xl md:text-6xl font-bold text-primary mb-3 flex items-center justify-center gap-4">
             <span className="text-5xl md:text-6xl">{"⚽"}</span>
             <span>קוראים ומנצחים!</span>
@@ -119,6 +162,42 @@ export default function ReadingTrackerPage() {
             {"📚"} קראו ספרים, צברו מטבעות, ונצחו במשחקים! {"💰"}
           </p>
         </header>
+
+        {/* User Switcher */}
+        <Card className="mb-6 border-3 border-accent/50 shadow-xl">
+          <CardContent className="py-5">
+            <div className="flex items-center justify-center gap-4">
+              <span className="text-2xl font-bold text-muted-foreground">{"👤"} שחקן:</span>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => switchUser("roei")}
+                  className={`h-16 px-8 text-2xl font-bold transition-all ${
+                    currentUser === "roei"
+                      ? "bg-primary text-primary-foreground scale-105 shadow-lg ring-4 ring-primary/30"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  <span className="text-3xl ml-2">{"👦"}</span>
+                  רועי
+                </Button>
+                <Button
+                  onClick={() => switchUser("yair")}
+                  className={`h-16 px-8 text-2xl font-bold transition-all ${
+                    currentUser === "yair"
+                      ? "bg-primary text-primary-foreground scale-105 shadow-lg ring-4 ring-primary/30"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  <span className="text-3xl ml-2">{"👦"}</span>
+                  יאיר
+                </Button>
+              </div>
+            </div>
+            <p className="text-center mt-4 text-xl font-semibold text-primary">
+              {"🎮"} עכשיו משחק: <span className="text-2xl">{userNames[currentUser]}</span> {"🎮"}
+            </p>
+          </CardContent>
+        </Card>
 
         <div className="grid gap-6 md:grid-cols-2">
           {/* Add Book Section */}
@@ -174,7 +253,7 @@ export default function ReadingTrackerPage() {
                 <div className="mt-6 pt-4 border-t-2">
                   <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
                     <span className="text-2xl">{"📚"}</span>
-                    הספרים שלי ({books.length})
+                    הספרים של {userNames[currentUser]} ({books.length})
                   </h3>
                   <div className="space-y-2 max-h-48 overflow-y-auto">
                     {books.map((book) => (
@@ -199,7 +278,7 @@ export default function ReadingTrackerPage() {
             <CardHeader className="py-5">
               <CardTitle className="flex items-center gap-4 text-2xl text-gold-foreground">
                 <span className="text-4xl animate-coin-bounce">{"💰"}</span>
-                המטבעות שלי
+                המטבעות של {userNames[currentUser]}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -224,7 +303,7 @@ export default function ReadingTrackerPage() {
             <CardHeader className="bg-accent/15 rounded-t-lg py-5">
               <CardTitle className="flex items-center gap-4 text-2xl text-foreground">
                 <span className="text-4xl">{"⚽"}</span>
-                הקבוצה שלי
+                הקבוצה של {userNames[currentUser]}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
@@ -327,7 +406,7 @@ export default function ReadingTrackerPage() {
                   )}
                   {matchResult.won && (
                     <p className="mt-6 text-lg font-semibold text-win bg-card/80 rounded-xl p-4">
-                      {"🌟"} כל הכבוד! אתם אלופים! {"🌟"}
+                      {"🌟"} כל הכבוד {userNames[currentUser]}! אתה אלוף! {"🌟"}
                     </p>
                   )}
                 </div>
