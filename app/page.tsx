@@ -30,6 +30,7 @@ interface UserData {
   books: Book[]
   players: Player[]
   bonusCoins: number
+  spentCoins: number
 }
 
 type UserId = "roei" | "yair"
@@ -61,11 +62,13 @@ const initialUserData: Record<UserId, UserData> = {
     books: [],
     players: [],
     bonusCoins: STARTING_BONUS,
+    spentCoins: 0,
   },
   yair: {
     books: [],
     players: [],
     bonusCoins: STARTING_BONUS,
+    spentCoins: 0,
   },
 }
 
@@ -102,11 +105,8 @@ export default function ReadingTrackerPage() {
   const bonusCoins = userData[currentUser].bonusCoins ?? STARTING_BONUS
   const totalCoins = books.reduce((sum, book) => sum + book.coins, 0) + bonusCoins
 
-  // Calculate spent coins (based on players owned)
-  const spentCoins = players.reduce((sum, player) => {
-    const storePlayer = storePlayers.find((sp) => sp.name === player.name)
-    return sum + (storePlayer?.price || 0)
-  }, 0)
+  // Get spent coins from state (tracked when buying players)
+  const spentCoins = userData[currentUser].spentCoins ?? 0
 
   // Available coins
   const availableCoins = totalCoins - spentCoins
@@ -170,6 +170,7 @@ export default function ReadingTrackerPage() {
       [currentUser]: {
         ...prev[currentUser],
         players: [...prev[currentUser].players, newPlayer],
+        spentCoins: (prev[currentUser].spentCoins ?? 0) + storePlayer.price,
       },
     }))
   }
