@@ -43,9 +43,13 @@ interface StorePlayer {
 }
 
 const storePlayers: StorePlayer[] = [
-  { id: "young", name: "שחקן צעיר", price: 20, rating: 10 },
-  { id: "fast", name: "שחקן מהיר", price: 40, rating: 20 },
-  { id: "star", name: "כוכב", price: 60, rating: 30 },
+  { id: "gavi", name: "גאבי", price: 20, rating: 12 },
+  { id: "camavinga", name: "קמאבינגה", price: 25, rating: 14 },
+  { id: "griezmann", name: "גריזמן", price: 40, rating: 22 },
+  { id: "dembele", name: "דמבלה", price: 45, rating: 24 },
+  { id: "vinicius", name: "ויניסיוס ג'וניור", price: 60, rating: 30 },
+  { id: "lewandowski", name: "לבנדובסקי", price: 65, rating: 32 },
+  { id: "mbappe", name: "אמבפה", price: 80, rating: 40 },
 ]
 
 // Starting bonus for new users
