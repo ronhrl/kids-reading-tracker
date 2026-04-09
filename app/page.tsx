@@ -95,7 +95,7 @@ export default function ReadingTrackerPage() {
   const players = userData[currentUser].players
 
   // Calculate total coins (books + starting bonus)
-  const totalCoins = books.reduce((sum, book) => sum + book.coins, 0) + userData[currentUser].bonusCoins
+  const totalCoins = books.reduce((sum, book) => sum + book.coins, 0) + (userData[currentUser].bonusCoins || STARTING_BONUS)
 
   // Calculate spent coins (based on players owned)
   const spentCoins = players.reduce((sum, player) => {
