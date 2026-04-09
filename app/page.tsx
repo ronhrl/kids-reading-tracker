@@ -4,7 +4,6 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { BookOpen, Coins, Users, Trophy, Swords, Star, Plus } from "lucide-react"
 
 // Types
 interface Book {
@@ -103,7 +102,7 @@ export default function ReadingTrackerPage() {
         myRating: teamRating,
       })
       setIsPlaying(false)
-    }, 1500)
+    }, 2000)
   }
 
   return (
@@ -111,77 +110,81 @@ export default function ReadingTrackerPage() {
       <div className="mx-auto max-w-4xl">
         {/* Header */}
         <header className="mb-8 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-primary mb-2">
-            ⚽ קוראים ומנצחים! ⚽
+          <h1 className="text-5xl md:text-6xl font-bold text-primary mb-3 flex items-center justify-center gap-4">
+            <span className="text-5xl md:text-6xl">{"⚽"}</span>
+            <span>קוראים ומנצחים!</span>
+            <span className="text-5xl md:text-6xl">{"⚽"}</span>
           </h1>
-          <p className="text-lg text-muted-foreground">
-            קראו ספרים, צברו מטבעות, ונצחו במשחקים!
+          <p className="text-xl text-muted-foreground">
+            {"📚"} קראו ספרים, צברו מטבעות, ונצחו במשחקים! {"💰"}
           </p>
         </header>
 
         <div className="grid gap-6 md:grid-cols-2">
           {/* Add Book Section */}
-          <Card className="border-2 border-primary/30 shadow-lg">
-            <CardHeader className="bg-primary/10 rounded-t-lg">
-              <CardTitle className="flex items-center gap-3 text-xl text-primary">
-                <BookOpen className="h-7 w-7" />
+          <Card className="border-3 border-primary/40 shadow-xl">
+            <CardHeader className="bg-primary/15 rounded-t-lg py-5">
+              <CardTitle className="flex items-center gap-4 text-2xl text-primary">
+                <span className="text-4xl">{"📚"}</span>
                 הוספת ספר חדש
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <div>
-                  <label className="block text-sm font-medium mb-2">שם הספר</label>
+                  <label className="block text-lg font-semibold mb-2">{"📖"} שם הספר</label>
                   <Input
                     type="text"
                     value={bookName}
                     onChange={(e) => setBookName(e.target.value)}
                     placeholder="הכניסו את שם הספר..."
-                    className="text-lg h-12"
+                    className="text-xl h-14 border-2"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">מספר עמודים</label>
+                  <label className="block text-lg font-semibold mb-2">{"📄"} מספר עמודים</label>
                   <Input
                     type="number"
                     value={bookPages}
                     onChange={(e) => setBookPages(e.target.value)}
                     placeholder="כמה עמודים בספר?"
                     min="1"
-                    className="text-lg h-12"
+                    className="text-xl h-14 border-2"
                   />
                 </div>
                 {bookPages && parseInt(bookPages) > 0 && (
-                  <p className="text-sm text-secondary font-semibold">
-                    🪙 תקבלו: {calculateCoins(parseInt(bookPages))} מטבעות!
-                  </p>
+                  <div className="bg-gold/20 rounded-xl p-4 text-center border-2 border-gold/40">
+                    <p className="text-xl font-bold text-gold-foreground">
+                      {"💰"} תקבלו: <span className="text-3xl">{calculateCoins(parseInt(bookPages))}</span> מטבעות! {"💰"}
+                    </p>
+                  </div>
                 )}
                 <Button
                   onClick={addBook}
                   disabled={!bookName.trim() || !bookPages || parseInt(bookPages) <= 0}
-                  className="w-full h-14 text-xl font-bold bg-primary hover:bg-primary/90"
+                  className="w-full h-16 text-2xl font-bold bg-primary hover:bg-primary/90 transition-transform hover:scale-105 active:scale-95"
                 >
-                  <Plus className="h-6 w-6 ml-2" />
+                  <span className="text-3xl ml-3">{"➕"}</span>
                   הוסף ספר
                 </Button>
               </div>
 
               {/* Books List */}
               {books.length > 0 && (
-                <div className="mt-6 pt-4 border-t">
-                  <h3 className="font-semibold mb-3 flex items-center gap-2">
-                    <BookOpen className="h-5 w-5 text-primary" />
+                <div className="mt-6 pt-4 border-t-2">
+                  <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
+                    <span className="text-2xl">{"📚"}</span>
                     הספרים שלי ({books.length})
                   </h3>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
                     {books.map((book) => (
                       <div
                         key={book.id}
-                        className="flex items-center justify-between bg-muted/50 rounded-lg p-3"
+                        className="flex items-center justify-between bg-primary/10 rounded-xl p-4 border border-primary/20"
                       >
-                        <span className="font-medium">{book.name}</span>
-                        <span className="text-sm text-muted-foreground">
-                          {book.pages} עמודים • {book.coins} 🪙
+                        <span className="font-bold text-lg">{book.name}</span>
+                        <span className="text-base font-semibold text-muted-foreground">
+                          {book.pages} עמודים {"•"} {book.coins} {"💰"}
                         </span>
                       </div>
                     ))}
@@ -192,64 +195,69 @@ export default function ReadingTrackerPage() {
           </Card>
 
           {/* Coins Display */}
-          <Card className="border-2 border-gold/50 shadow-lg bg-gold/10">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3 text-xl text-gold-foreground">
-                <Coins className="h-7 w-7 text-gold" />
+          <Card className="border-3 border-gold/60 shadow-xl bg-gradient-to-br from-gold/20 to-gold/5">
+            <CardHeader className="py-5">
+              <CardTitle className="flex items-center gap-4 text-2xl text-gold-foreground">
+                <span className="text-4xl animate-coin-bounce">{"💰"}</span>
                 המטבעות שלי
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-6">
-                <div className="text-7xl md:text-8xl font-bold text-gold-foreground mb-2">
+              <div className="text-center py-8">
+                <div className={`text-8xl md:text-9xl font-black text-gold-foreground mb-4 ${totalCoins > 0 ? 'animate-pulse-glow' : ''} rounded-3xl inline-block px-8 py-4`}>
                   {totalCoins}
                 </div>
-                <p className="text-lg text-gold-foreground/70">🪙 מטבעות זהב 🪙</p>
+                <p className="text-2xl font-bold text-gold-foreground/80">
+                  {"💰"} מטבעות זהב {"💰"}
+                </p>
               </div>
-              <div className="bg-card rounded-lg p-4 text-center">
-                <p className="text-sm text-muted-foreground">
-                  כל ספר נותן 10 מטבעות + מטבע נוסף על כל 10 עמודים!
+              <div className="bg-card rounded-xl p-5 text-center border-2 border-gold/30">
+                <p className="text-lg text-muted-foreground">
+                  {"📚"} כל ספר נותן <span className="font-bold text-gold-foreground">10 מטבעות</span> + מטבע נוסף על כל 10 עמודים!
                 </p>
               </div>
             </CardContent>
           </Card>
 
           {/* Players List */}
-          <Card className="border-2 border-accent/30 shadow-lg">
-            <CardHeader className="bg-accent/10 rounded-t-lg">
-              <CardTitle className="flex items-center gap-3 text-xl text-accent-foreground">
-                <Users className="h-7 w-7 text-accent" />
+          <Card className="border-3 border-accent/40 shadow-xl">
+            <CardHeader className="bg-accent/15 rounded-t-lg py-5">
+              <CardTitle className="flex items-center gap-4 text-2xl text-foreground">
+                <span className="text-4xl">{"⚽"}</span>
                 הקבוצה שלי
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {players.map((player) => (
                   <div
                     key={player.id}
-                    className="flex items-center justify-between bg-accent/10 rounded-xl p-4"
+                    className="flex items-center justify-between bg-accent/15 rounded-2xl p-5 border-2 border-accent/30"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center text-accent-foreground text-xl font-bold">
-                        ⚽
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-full bg-accent flex items-center justify-center text-3xl shadow-lg">
+                        {"⚽"}
                       </div>
-                      <span className="font-bold text-lg">{player.name}</span>
+                      <span className="font-bold text-xl">{player.name}</span>
                     </div>
-                    <div className="flex items-center gap-2 bg-card rounded-lg px-4 py-2">
-                      <Star className="h-5 w-5 text-secondary fill-secondary" />
-                      <span className="font-bold text-xl">{player.rating}</span>
+                    <div className="flex items-center gap-2 bg-card rounded-xl px-5 py-3 shadow-md border-2 border-secondary/30">
+                      <span className="text-2xl">{"⭐"}</span>
+                      <span className="font-black text-2xl">{player.rating}</span>
                     </div>
                   </div>
                 ))}
               </div>
 
               {/* Team Rating */}
-              <div className="mt-6 pt-4 border-t">
-                <div className="flex items-center justify-between bg-primary/10 rounded-xl p-4">
-                  <span className="font-bold text-lg">דירוג הקבוצה</span>
-                  <div className="flex items-center gap-2 bg-primary text-primary-foreground rounded-lg px-5 py-2">
-                    <Trophy className="h-6 w-6" />
-                    <span className="font-bold text-2xl">{teamRating}</span>
+              <div className="mt-6 pt-4 border-t-2">
+                <div className="flex items-center justify-between bg-primary/15 rounded-2xl p-5 border-2 border-primary/30">
+                  <span className="font-bold text-xl flex items-center gap-2">
+                    <span className="text-2xl">{"🏆"}</span>
+                    דירוג הקבוצה
+                  </span>
+                  <div className="flex items-center gap-3 bg-primary text-primary-foreground rounded-xl px-6 py-3 shadow-lg">
+                    <span className="text-2xl">{"🏆"}</span>
+                    <span className="font-black text-3xl">{teamRating}</span>
                   </div>
                 </div>
               </div>
@@ -257,10 +265,10 @@ export default function ReadingTrackerPage() {
           </Card>
 
           {/* Play Match Section */}
-          <Card className="border-2 border-secondary/30 shadow-lg">
-            <CardHeader className="bg-secondary/10 rounded-t-lg">
-              <CardTitle className="flex items-center gap-3 text-xl text-secondary">
-                <Swords className="h-7 w-7" />
+          <Card className="border-3 border-secondary/40 shadow-xl">
+            <CardHeader className="bg-secondary/15 rounded-t-lg py-5">
+              <CardTitle className="flex items-center gap-4 text-2xl text-secondary">
+                <span className="text-4xl">{"⚔️"}</span>
                 משחק!
               </CardTitle>
             </CardHeader>
@@ -268,50 +276,58 @@ export default function ReadingTrackerPage() {
               <Button
                 onClick={playMatch}
                 disabled={isPlaying}
-                className="w-full h-20 text-2xl font-bold bg-secondary hover:bg-secondary/90 text-secondary-foreground mb-6"
+                className="w-full h-24 text-3xl font-black bg-secondary hover:bg-secondary/90 text-secondary-foreground mb-6 transition-transform hover:scale-105 active:scale-95 shadow-xl"
               >
                 {isPlaying ? (
-                  <span className="animate-pulse">⚽ משחקים... ⚽</span>
+                  <span className="flex items-center gap-4">
+                    <span className="text-4xl animate-football-spin">{"⚽"}</span>
+                    <span className="animate-pulse">משחקים...</span>
+                    <span className="text-4xl animate-football-spin">{"⚽"}</span>
+                  </span>
                 ) : (
-                  <>
-                    <Trophy className="h-8 w-8 ml-3" />
+                  <span className="flex items-center gap-3">
+                    <span className="text-4xl">{"🏆"}</span>
                     שחקו משחק!
-                  </>
+                    <span className="text-4xl">{"⚽"}</span>
+                  </span>
                 )}
               </Button>
 
               {/* Match Result */}
               {matchResult && (
                 <div
-                  className={`rounded-xl p-6 text-center ${
+                  className={`rounded-2xl p-8 text-center ${
                     matchResult.won
-                      ? "bg-win/20 border-2 border-win"
-                      : "bg-lose/20 border-2 border-lose"
+                      ? "bg-win/25 border-4 border-win animate-bounce-win"
+                      : "bg-lose/25 border-4 border-lose animate-shake-lose"
                   }`}
                 >
-                  <div className="text-4xl mb-4">
-                    {matchResult.won ? "🎉🏆🎉" : "😢"}
+                  <div className="text-6xl mb-4">
+                    {matchResult.won ? "🎉🏆🎉" : "😢💔😢"}
                   </div>
                   <h3
-                    className={`text-3xl font-bold mb-4 ${
+                    className={`text-5xl font-black mb-6 ${
                       matchResult.won ? "text-win" : "text-lose"
                     }`}
                   >
                     {matchResult.won ? "ניצחתם!" : "הפסדתם..."}
                   </h3>
-                  <div className="space-y-2 text-lg">
-                    <p>
-                      <span className="font-semibold">הקבוצה שלכם:</span>{" "}
-                      {matchResult.myRating} נקודות
+                  <div className="space-y-3 text-xl bg-card/50 rounded-xl p-4">
+                    <p className="font-bold">
+                      {"⚽"} הקבוצה שלכם: <span className="text-2xl">{matchResult.myRating}</span> נקודות
                     </p>
-                    <p>
-                      <span className="font-semibold">נגד {matchResult.opponentName}:</span>{" "}
-                      {matchResult.opponentRating} נקודות
+                    <p className="font-bold">
+                      {"🆚"} נגד {matchResult.opponentName}: <span className="text-2xl">{matchResult.opponentRating}</span> נקודות
                     </p>
                   </div>
                   {!matchResult.won && (
-                    <p className="mt-4 text-muted-foreground">
-                      קראו עוד ספרים כדי לחזק את הקבוצה! 📚
+                    <p className="mt-6 text-lg font-semibold text-muted-foreground bg-card/80 rounded-xl p-4">
+                      {"📚"} קראו עוד ספרים כדי לחזק את הקבוצה! {"💪"}
+                    </p>
+                  )}
+                  {matchResult.won && (
+                    <p className="mt-6 text-lg font-semibold text-win bg-card/80 rounded-xl p-4">
+                      {"🌟"} כל הכבוד! אתם אלופים! {"🌟"}
                     </p>
                   )}
                 </div>
@@ -319,11 +335,11 @@ export default function ReadingTrackerPage() {
 
               {/* Instructions */}
               {!matchResult && !isPlaying && (
-                <div className="bg-muted/50 rounded-lg p-4 text-center">
-                  <p className="text-muted-foreground">
-                    לחצו על הכפתור כדי לשחק נגד קבוצה אקראית!
+                <div className="bg-muted/60 rounded-xl p-5 text-center border-2 border-muted">
+                  <p className="text-lg text-muted-foreground leading-relaxed">
+                    {"👆"} לחצו על הכפתור כדי לשחק נגד קבוצה אקראית!
                     <br />
-                    הקבוצה עם הדירוג הגבוה יותר מנצחת ⚡
+                    {"⚡"} הקבוצה עם הדירוג הגבוה יותר מנצחת! {"⚡"}
                   </p>
                 </div>
               )}
@@ -332,8 +348,10 @@ export default function ReadingTrackerPage() {
         </div>
 
         {/* Footer */}
-        <footer className="mt-8 text-center text-sm text-muted-foreground">
-          <p>📚 ככל שתקראו יותר, הקבוצה שלכם תהיה חזקה יותר! 💪</p>
+        <footer className="mt-10 text-center">
+          <p className="text-xl font-semibold text-muted-foreground bg-card/80 rounded-2xl py-4 px-6 inline-block shadow-lg border-2 border-muted">
+            {"📚"} ככל שתקראו יותר, הקבוצה שלכם תהיה חזקה יותר! {"💪⚽"}
+          </p>
         </footer>
       </div>
     </main>
