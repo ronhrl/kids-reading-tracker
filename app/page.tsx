@@ -294,7 +294,7 @@ export default function ReadingTrackerPage() {
                     className="text-xl h-14 border-2"
                   />
                 </div>
-                {bookPages && parseInt(bookPages) > 0 && (
+                {bookPages && !isNaN(parseInt(bookPages)) && parseInt(bookPages) > 0 && (
                   <div className="bg-gold/20 rounded-xl p-4 text-center border-2 border-gold/40">
                     <p className="text-xl font-bold text-gold-foreground">
                       {"💰"} תקבלו: <span className="text-3xl">{calculateCoins(parseInt(bookPages))}</span> מטבעות! {"💰"}
@@ -303,7 +303,7 @@ export default function ReadingTrackerPage() {
                 )}
                 <Button
                   onClick={addBook}
-                  disabled={!bookName.trim() || !bookPages || parseInt(bookPages) <= 0}
+                  disabled={!bookName.trim() || !bookPages || isNaN(parseInt(bookPages)) || parseInt(bookPages) <= 0}
                   className="w-full h-16 text-2xl font-bold bg-primary hover:bg-primary/90 transition-transform hover:scale-105 active:scale-95"
                 >
                   <span className="text-3xl ml-3">{"➕"}</span>
