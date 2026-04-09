@@ -341,7 +341,7 @@ export default function ReadingTrackerPage() {
           </Card>
 
           {/* Store Section */}
-          <Card className="border-3 border-secondary/40 shadow-xl">
+          <Card className="border-3 border-secondary/40 shadow-xl md:col-span-2">
             <CardHeader className="bg-secondary/15 rounded-t-lg py-5">
               <CardTitle className="flex items-center gap-4 text-2xl text-secondary">
                 <span className="text-4xl">{"🏪"}</span>
@@ -349,41 +349,60 @@ export default function ReadingTrackerPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {storePlayers.map((storePlayer) => {
                   const canAfford = availableCoins >= storePlayer.price
+                  const alreadyOwned = players.some(p => p.name === storePlayer.name)
                   return (
                     <div
                       key={storePlayer.id}
-                      className={`flex items-center justify-between rounded-2xl p-5 border-2 ${
-                        canAfford 
-                          ? "bg-secondary/15 border-secondary/30" 
-                          : "bg-muted/50 border-muted opacity-60"
+                      className={`relative flex flex-col items-center rounded-2xl p-4 border-4 transition-all ${
+                        alreadyOwned
+                          ? "bg-primary/20 border-primary/50 opacity-70"
+                          : canAfford 
+                            ? "bg-gradient-to-b from-secondary/20 to-secondary/5 border-secondary/40 hover:scale-105 hover:shadow-xl" 
+                            : "bg-muted/50 border-muted/60 opacity-50"
                       }`}
                     >
-                      <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-full bg-secondary/30 flex items-center justify-center text-3xl shadow-lg">
-                          {"⚽"}
-                        </div>
-                        <div>
-                          <span className="font-bold text-xl block">{storePlayer.name}</span>
-                          <span className="text-base text-muted-foreground flex items-center gap-2">
-                            <span>{"⭐"}</span> דירוג: {storePlayer.rating}
-                          </span>
-                        </div>
+                      {/* Rating Badge - Top Corner */}
+                      <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground rounded-full w-12 h-12 flex items-center justify-center font-black text-lg shadow-lg border-2 border-card">
+                        {storePlayer.rating}
                       </div>
-                      <Button
-                        onClick={() => buyPlayer(storePlayer)}
-                        disabled={!canAfford}
-                        className={`h-14 px-6 text-xl font-bold transition-transform ${
-                          canAfford 
-                            ? "bg-secondary hover:bg-secondary/90 hover:scale-105 active:scale-95" 
-                            : "bg-muted"
-                        }`}
-                      >
-                        <span className="text-2xl ml-2">{"💰"}</span>
-                        {storePlayer.price}
-                      </Button>
+                      
+                      {/* Football Icon */}
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-card to-muted flex items-center justify-center text-4xl shadow-inner border-2 border-secondary/30 mb-3">
+                        {"⚽"}
+                      </div>
+                      
+                      {/* Player Name */}
+                      <h3 className="font-black text-lg text-center mb-2 text-foreground">
+                        {storePlayer.name}
+                      </h3>
+                      
+                      {/* Price */}
+                      <div className="flex items-center gap-1 bg-gold/30 rounded-full px-4 py-1 mb-3 border border-gold/50">
+                        <span className="text-lg">{"💰"}</span>
+                        <span className="font-bold text-gold-foreground">{storePlayer.price}</span>
+                      </div>
+                      
+                      {/* Buy Button */}
+                      {alreadyOwned ? (
+                        <div className="w-full h-12 flex items-center justify-center bg-primary/30 rounded-xl text-primary font-bold text-lg">
+                          {"✓"} בקבוצה
+                        </div>
+                      ) : (
+                        <Button
+                          onClick={() => buyPlayer(storePlayer)}
+                          disabled={!canAfford}
+                          className={`w-full h-12 text-lg font-bold transition-transform ${
+                            canAfford 
+                              ? "bg-secondary hover:bg-secondary/90 text-secondary-foreground hover:scale-105 active:scale-95" 
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {"🛒"} קנה
+                        </Button>
+                      )}
                     </div>
                   )
                 })}
@@ -414,7 +433,7 @@ export default function ReadingTrackerPage() {
                 <div className="text-center py-8 bg-muted/40 rounded-2xl border-2 border-dashed border-muted">
                   <span className="text-6xl block mb-4">{"😢"}</span>
                   <p className="text-xl font-bold text-muted-foreground mb-2">
-                    אין שחקנים בקבוצה
+                    אין שחקנים ב��בוצה
                   </p>
                   <p className="text-lg text-muted-foreground">
                     {"🏪"} קנו שחקנים מהחנות! {"💰"}
