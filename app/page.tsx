@@ -56,8 +56,8 @@ const storePlayers: StorePlayer[] = [
 // Starting bonus for new users
 const STARTING_BONUS = 30
 
-// Initial user data - start with no players but a welcome bonus
-const initialUserData: Record<UserId, UserData> = {
+// Fresh start function - creates clean user data
+const createFreshUserData = (): Record<UserId, UserData> => ({
   roei: {
     books: [],
     players: [],
@@ -70,7 +70,7 @@ const initialUserData: Record<UserId, UserData> = {
     bonusCoins: STARTING_BONUS,
     spentCoins: 0,
   },
-}
+})
 
 const userNames: Record<UserId, string> = {
   roei: "רועי",
@@ -91,7 +91,7 @@ const opponentNames = [
 
 export default function ReadingTrackerPage() {
   const [currentUser, setCurrentUser] = useState<UserId>("roei")
-  const [userData, setUserData] = useState<Record<UserId, UserData>>(initialUserData)
+  const [userData, setUserData] = useState<Record<UserId, UserData>>(createFreshUserData)
   const [bookName, setBookName] = useState("")
   const [bookPages, setBookPages] = useState("")
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null)
