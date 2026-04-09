@@ -29,6 +29,7 @@ interface MatchResult {
 interface UserData {
   books: Book[]
   players: Player[]
+  bonusCoins: number
 }
 
 type UserId = "roei" | "yair"
@@ -47,15 +48,20 @@ const storePlayers: StorePlayer[] = [
   { id: "star", name: "כוכב", price: 60, rating: 30 },
 ]
 
-// Initial user data - start with no players
+// Starting bonus for new users
+const STARTING_BONUS = 30
+
+// Initial user data - start with no players but a welcome bonus
 const initialUserData: Record<UserId, UserData> = {
   roei: {
     books: [],
     players: [],
+    bonusCoins: STARTING_BONUS,
   },
   yair: {
     books: [],
     players: [],
+    bonusCoins: STARTING_BONUS,
   },
 }
 
@@ -88,8 +94,8 @@ export default function ReadingTrackerPage() {
   const books = userData[currentUser].books
   const players = userData[currentUser].players
 
-  // Calculate total coins
-  const totalCoins = books.reduce((sum, book) => sum + book.coins, 0)
+  // Calculate total coins (books + starting bonus)
+  const totalCoins = books.reduce((sum, book) => sum + book.coins, 0) + userData[currentUser].bonusCoins
 
   // Calculate spent coins (based on players owned)
   const spentCoins = players.reduce((sum, player) => {
