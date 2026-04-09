@@ -33,23 +33,29 @@ interface UserData {
 
 type UserId = "roei" | "yair"
 
-// Initial mock data for players (different for each user)
+// Store players available for purchase
+interface StorePlayer {
+  id: string
+  name: string
+  price: number
+  rating: number
+}
+
+const storePlayers: StorePlayer[] = [
+  { id: "young", name: "שחקן צעיר", price: 20, rating: 10 },
+  { id: "fast", name: "שחקן מהיר", price: 40, rating: 20 },
+  { id: "star", name: "כוכב", price: 60, rating: 30 },
+]
+
+// Initial user data - start with no players
 const initialUserData: Record<UserId, UserData> = {
   roei: {
     books: [],
-    players: [
-      { id: 1, name: "רונאלדו", rating: 92 },
-      { id: 2, name: "מסי", rating: 91 },
-      { id: 3, name: "אמבפה", rating: 89 },
-    ],
+    players: [],
   },
   yair: {
     books: [],
-    players: [
-      { id: 1, name: "הולנד", rating: 90 },
-      { id: 2, name: "בלינגהאם", rating: 88 },
-      { id: 3, name: "סאקה", rating: 86 },
-    ],
+    players: [],
   },
 }
 
@@ -85,6 +91,15 @@ export default function ReadingTrackerPage() {
   // Calculate total coins
   const totalCoins = books.reduce((sum, book) => sum + book.coins, 0)
 
+  // Calculate spent coins (based on players owned)
+  const spentCoins = players.reduce((sum, player) => {
+    const storePlayer = storePlayers.find((sp) => sp.name === player.name)
+    return sum + (storePlayer?.price || 0)
+  }, 0)
+
+  // Available coins
+  const availableCoins = totalCoins - spentCoins
+
   // Calculate team rating
   const teamRating = players.reduce((sum, player) => sum + player.rating, 0)
 
@@ -92,6 +107,9 @@ export default function ReadingTrackerPage() {
   const calculateCoins = (pages: number) => {
     return 10 + Math.floor(pages / 10)
   }
+
+  // Check if can play match (need at least 2 players)
+  const canPlayMatch = players.length >= 2
 
   // Switch user
   const switchUser = (userId: UserId) => {
@@ -126,8 +144,29 @@ export default function ReadingTrackerPage() {
     setBookPages("")
   }
 
+  // Buy a player
+  const buyPlayer = (storePlayer: StorePlayer) => {
+    if (availableCoins < storePlayer.price) return
+
+    const newPlayer: Player = {
+      id: Date.now(),
+      name: storePlayer.name,
+      rating: storePlayer.rating,
+    }
+
+    setUserData((prev) => ({
+      ...prev,
+      [currentUser]: {
+        ...prev[currentUser],
+        players: [...prev[currentUser].players, newPlayer],
+      },
+    }))
+  }
+
   // Play a match
   const playMatch = () => {
+    if (!canPlayMatch) return
+
     setIsPlaying(true)
     setMatchResult(null)
 
@@ -196,6 +235,24 @@ export default function ReadingTrackerPage() {
             <p className="text-center mt-4 text-xl font-semibold text-primary">
               {"🎮"} עכשיו משחק: <span className="text-2xl">{userNames[currentUser]}</span> {"🎮"}
             </p>
+          </CardContent>
+        </Card>
+
+        {/* Coins Display - Prominent at the top */}
+        <Card className="mb-6 border-3 border-gold/60 shadow-xl bg-gradient-to-br from-gold/20 to-gold/5">
+          <CardContent className="py-6">
+            <div className="flex items-center justify-center gap-8">
+              <span className="text-5xl animate-coin-bounce">{"💰"}</span>
+              <div className="text-center">
+                <div className={`text-7xl md:text-8xl font-black text-gold-foreground ${availableCoins > 0 ? 'animate-pulse-glow' : ''} rounded-3xl inline-block px-6 py-2`}>
+                  {availableCoins}
+                </div>
+                <p className="text-2xl font-bold text-gold-foreground/80 mt-2">
+                  מטבעות זהב
+                </p>
+              </div>
+              <span className="text-5xl animate-coin-bounce">{"💰"}</span>
+            </div>
           </CardContent>
         </Card>
 
@@ -273,26 +330,57 @@ export default function ReadingTrackerPage() {
             </CardContent>
           </Card>
 
-          {/* Coins Display */}
-          <Card className="border-3 border-gold/60 shadow-xl bg-gradient-to-br from-gold/20 to-gold/5">
-            <CardHeader className="py-5">
-              <CardTitle className="flex items-center gap-4 text-2xl text-gold-foreground">
-                <span className="text-4xl animate-coin-bounce">{"💰"}</span>
-                המטבעות של {userNames[currentUser]}
+          {/* Store Section */}
+          <Card className="border-3 border-secondary/40 shadow-xl">
+            <CardHeader className="bg-secondary/15 rounded-t-lg py-5">
+              <CardTitle className="flex items-center gap-4 text-2xl text-secondary">
+                <span className="text-4xl">{"🏪"}</span>
+                חנות שחקנים
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <div className={`text-8xl md:text-9xl font-black text-gold-foreground mb-4 ${totalCoins > 0 ? 'animate-pulse-glow' : ''} rounded-3xl inline-block px-8 py-4`}>
-                  {totalCoins}
-                </div>
-                <p className="text-2xl font-bold text-gold-foreground/80">
-                  {"💰"} מטבעות זהב {"💰"}
-                </p>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                {storePlayers.map((storePlayer) => {
+                  const canAfford = availableCoins >= storePlayer.price
+                  return (
+                    <div
+                      key={storePlayer.id}
+                      className={`flex items-center justify-between rounded-2xl p-5 border-2 ${
+                        canAfford 
+                          ? "bg-secondary/15 border-secondary/30" 
+                          : "bg-muted/50 border-muted opacity-60"
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 rounded-full bg-secondary/30 flex items-center justify-center text-3xl shadow-lg">
+                          {"⚽"}
+                        </div>
+                        <div>
+                          <span className="font-bold text-xl block">{storePlayer.name}</span>
+                          <span className="text-base text-muted-foreground flex items-center gap-2">
+                            <span>{"⭐"}</span> דירוג: {storePlayer.rating}
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={() => buyPlayer(storePlayer)}
+                        disabled={!canAfford}
+                        className={`h-14 px-6 text-xl font-bold transition-transform ${
+                          canAfford 
+                            ? "bg-secondary hover:bg-secondary/90 hover:scale-105 active:scale-95" 
+                            : "bg-muted"
+                        }`}
+                      >
+                        <span className="text-2xl ml-2">{"💰"}</span>
+                        {storePlayer.price}
+                      </Button>
+                    </div>
+                  )
+                })}
               </div>
-              <div className="bg-card rounded-xl p-5 text-center border-2 border-gold/30">
+              <div className="mt-6 bg-muted/60 rounded-xl p-4 text-center border-2 border-muted">
                 <p className="text-lg text-muted-foreground">
-                  {"📚"} כל ספר נותן <span className="font-bold text-gold-foreground">10 מטבעות</span> + מטבע נוסף על כל 10 עמודים!
+                  {"📚"} קראו ספרים כדי להרוויח מטבעות וקנו שחקנים! {"⚽"}
                 </p>
               </div>
             </CardContent>
@@ -304,58 +392,93 @@ export default function ReadingTrackerPage() {
               <CardTitle className="flex items-center gap-4 text-2xl text-foreground">
                 <span className="text-4xl">{"⚽"}</span>
                 הקבוצה של {userNames[currentUser]}
+                {players.length > 0 && (
+                  <span className="text-lg font-normal text-muted-foreground">
+                    ({players.length} שחקנים)
+                  </span>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="space-y-4">
-                {players.map((player) => (
-                  <div
-                    key={player.id}
-                    className="flex items-center justify-between bg-accent/15 rounded-2xl p-5 border-2 border-accent/30"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-full bg-accent flex items-center justify-center text-3xl shadow-lg">
-                        {"⚽"}
+              {players.length === 0 ? (
+                <div className="text-center py-8 bg-muted/40 rounded-2xl border-2 border-dashed border-muted">
+                  <span className="text-6xl block mb-4">{"😢"}</span>
+                  <p className="text-xl font-bold text-muted-foreground mb-2">
+                    אין שחקנים בקבוצה
+                  </p>
+                  <p className="text-lg text-muted-foreground">
+                    {"🏪"} קנו שחקנים מהחנות! {"💰"}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {players.map((player) => (
+                    <div
+                      key={player.id}
+                      className="flex items-center justify-between bg-accent/15 rounded-2xl p-5 border-2 border-accent/30"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 rounded-full bg-accent flex items-center justify-center text-3xl shadow-lg">
+                          {"⚽"}
+                        </div>
+                        <span className="font-bold text-xl">{player.name}</span>
                       </div>
-                      <span className="font-bold text-xl">{player.name}</span>
+                      <div className="flex items-center gap-2 bg-card rounded-xl px-5 py-3 shadow-md border-2 border-secondary/30">
+                        <span className="text-2xl">{"⭐"}</span>
+                        <span className="font-black text-2xl">{player.rating}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 bg-card rounded-xl px-5 py-3 shadow-md border-2 border-secondary/30">
-                      <span className="text-2xl">{"⭐"}</span>
-                      <span className="font-black text-2xl">{player.rating}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
               {/* Team Rating */}
-              <div className="mt-6 pt-4 border-t-2">
-                <div className="flex items-center justify-between bg-primary/15 rounded-2xl p-5 border-2 border-primary/30">
-                  <span className="font-bold text-xl flex items-center gap-2">
-                    <span className="text-2xl">{"🏆"}</span>
-                    דירוג הקבוצה
-                  </span>
-                  <div className="flex items-center gap-3 bg-primary text-primary-foreground rounded-xl px-6 py-3 shadow-lg">
-                    <span className="text-2xl">{"🏆"}</span>
-                    <span className="font-black text-3xl">{teamRating}</span>
+              {players.length > 0 && (
+                <div className="mt-6 pt-4 border-t-2">
+                  <div className="flex items-center justify-between bg-primary/15 rounded-2xl p-5 border-2 border-primary/30">
+                    <span className="font-bold text-xl flex items-center gap-2">
+                      <span className="text-2xl">{"🏆"}</span>
+                      דירוג הקבוצה
+                    </span>
+                    <div className="flex items-center gap-3 bg-primary text-primary-foreground rounded-xl px-6 py-3 shadow-lg">
+                      <span className="text-2xl">{"🏆"}</span>
+                      <span className="font-black text-3xl">{teamRating}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
           {/* Play Match Section */}
-          <Card className="border-3 border-secondary/40 shadow-xl">
-            <CardHeader className="bg-secondary/15 rounded-t-lg py-5">
-              <CardTitle className="flex items-center gap-4 text-2xl text-secondary">
+          <Card className="border-3 border-primary/40 shadow-xl">
+            <CardHeader className="bg-primary/15 rounded-t-lg py-5">
+              <CardTitle className="flex items-center gap-4 text-2xl text-primary">
                 <span className="text-4xl">{"⚔️"}</span>
                 משחק!
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
+              {!canPlayMatch && (
+                <div className="mb-6 bg-destructive/15 rounded-2xl p-5 text-center border-2 border-destructive/30">
+                  <span className="text-5xl block mb-3">{"⚠️"}</span>
+                  <p className="text-xl font-bold text-destructive mb-2">
+                    אי אפשר לשחק עדיין!
+                  </p>
+                  <p className="text-lg text-muted-foreground">
+                    {"⚽"} צריך לפחות 2 שחקנים בקבוצה כדי לשחק משחק {"⚽"}
+                  </p>
+                </div>
+              )}
+
               <Button
                 onClick={playMatch}
-                disabled={isPlaying}
-                className="w-full h-24 text-3xl font-black bg-secondary hover:bg-secondary/90 text-secondary-foreground mb-6 transition-transform hover:scale-105 active:scale-95 shadow-xl"
+                disabled={isPlaying || !canPlayMatch}
+                className={`w-full h-24 text-3xl font-black mb-6 transition-transform shadow-xl ${
+                  canPlayMatch 
+                    ? "bg-primary hover:bg-primary/90 text-primary-foreground hover:scale-105 active:scale-95" 
+                    : "bg-muted text-muted-foreground"
+                }`}
               >
                 {isPlaying ? (
                   <span className="flex items-center gap-4">
@@ -401,7 +524,7 @@ export default function ReadingTrackerPage() {
                   </div>
                   {!matchResult.won && (
                     <p className="mt-6 text-lg font-semibold text-muted-foreground bg-card/80 rounded-xl p-4">
-                      {"📚"} קראו עוד ספרים כדי לחזק את הקבוצה! {"💪"}
+                      {"📚"} קראו עוד ספרים וקנו שחקנים חזקים יותר! {"💪"}
                     </p>
                   )}
                   {matchResult.won && (
@@ -413,7 +536,7 @@ export default function ReadingTrackerPage() {
               )}
 
               {/* Instructions */}
-              {!matchResult && !isPlaying && (
+              {!matchResult && !isPlaying && canPlayMatch && (
                 <div className="bg-muted/60 rounded-xl p-5 text-center border-2 border-muted">
                   <p className="text-lg text-muted-foreground leading-relaxed">
                     {"👆"} לחצו על הכפתור כדי לשחק נגד קבוצה אקראית!
