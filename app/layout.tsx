@@ -1,9 +1,6 @@
 import type { Metadata } from 'next'
-import { Rubik } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
-
-const rubik = Rubik({ subsets: ["latin", "hebrew"], variable: "--font-rubik" });
 
 export const metadata: Metadata = {
   title: 'קוראים ומנצחים! | Reading Champions',
@@ -35,7 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="he" dir="rtl">
-      <body className={`${rubik.variable} font-sans antialiased`}>
+      <body className="font-sans antialiased">
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

@@ -12,6 +12,7 @@ import {
   loadSettings,
   type Settings,
 } from "@/lib/settings"
+import { loadGameState, saveGameState } from "@/lib/supabase"
 
 // Types
 interface Book {
@@ -125,7 +126,7 @@ const storePlayers: StorePlayer[] = [
   { id: "modric", name: "מודריץ'", price: 35, rating: 20, age: 39, role: "קשר", countryOfOrigin: "קרואטיה", teamName: "ריאל מדריד" },
   { id: "bellingham", name: "בלינגהאם", price: 55, rating: 28, age: 21, role: "קשר הגנתי", countryOfOrigin: "אנגליה", teamName: "ריאל מדריד" },
   { id: "tchouameni", name: "צ'ואמני", price: 45, rating: 23, age: 25, role: "קשר הגנתי", countryOfOrigin: "צרפת", teamName: "ריאל מדריד" },
-  { id: "nacho", name: "นาโจ", price: 20, rating: 14, age: 34, role: "בחזית הגנה", countryOfOrigin: "ספרד", teamName: "ריאל מדריד" },
+  { id: "nacho", name: "נאכו", price: 20, rating: 14, age: 34, role: "בחזית הגנה", countryOfOrigin: "ספרד", teamName: "ריאל מדריד" },
   { id: "courtois", name: "קורטואה", price: 50, rating: 27, age: 32, role: "שוער", countryOfOrigin: "בלגיה", teamName: "ריאל מדריד" },
 
   // Atletico Madrid
@@ -190,6 +191,17 @@ const storePlayers: StorePlayer[] = [
 
   // Chelsea
   { id: "mount", name: "מאונט", price: 35, rating: 18, age: 25, role: "כנף", countryOfOrigin: "אנגליה", teamName: "צ'לסי" },
+
+  // Budget Players - Cheap team building
+  { id: "budget_gk_1", name: "שוער צעיר", price: 10, rating: 8, age: 22, role: "שוער", countryOfOrigin: "פולין", teamName: "ליגה אחרת" },
+  { id: "budget_def_1", name: "הגנן מוכשר", price: 12, rating: 9, age: 24, role: "בחזית הגנה", countryOfOrigin: "פורטוגל", teamName: "ליגה אחרת" },
+  { id: "budget_def_2", name: "הגנן ישראלי", price: 12, rating: 9, age: 26, role: "בחזית הגנה", countryOfOrigin: "ישראל", teamName: "ליגה אחרת" },
+  { id: "budget_mid_1", name: "קשר חם", price: 13, rating: 10, age: 25, role: "קשר", countryOfOrigin: "רומניה", teamName: "ליגה אחרת" },
+  { id: "budget_mid_2", name: "קשר בעלה", price: 13, rating: 10, age: 27, role: "קשר הגנתי", countryOfOrigin: "סרביה", teamName: "ליגה אחרת" },
+  { id: "budget_wing_1", name: "כנף מהירה", price: 15, rating: 11, age: 23, role: "כנף", countryOfOrigin: "אוקראינה", teamName: "ליגה אחרת" },
+  { id: "budget_wing_2", name: "כנף טקטיקאית", price: 15, rating: 11, age: 26, role: "כנף", countryOfOrigin: "בולגריה", teamName: "ליגה אחרת" },
+  { id: "budget_fwd_1", name: "חלוץ צעיר", price: 16, rating: 12, age: 24, role: "חלוץ", countryOfOrigin: "קרואטיה", teamName: "ליגה אחרת" },
+  { id: "budget_fwd_2", name: "חלוץ חדש", price: 16, rating: 12, age: 25, role: "חלוץ", countryOfOrigin: "סלובניה", teamName: "ליגה אחרת" },
 ]
 
 // Starting bonus for new users
@@ -240,11 +252,6 @@ const createFreshUserData = (): Record<UserId, UserData> => ({
     },
   },
 })
-
-const STORAGE_KEYS: Record<UserId, string> = {
-  roei: "reading-game-roy",
-  yair: "reading-game-yair",
-}
 
 const STAT_UPGRADE_COST = 5
 const STAT_UPGRADE_STEP = 5
@@ -372,49 +379,44 @@ function normalizeLineupAssignments(raw: unknown): Record<FormationType, Record<
   return out
 }
 
-function loadUserData(userId: UserId): UserData | null {
-  if (typeof window === "undefined") return null
-  try {
-    const settings = loadSettings()
-    const raw = localStorage.getItem(STORAGE_KEYS[userId])
-    if (!raw) return null
-    const u = JSON.parse(raw) as Record<string, unknown>
-    const normalizedTasks = Array.isArray(u.tasks)
-      ? (u.tasks as Record<string, unknown>[]).map((t) => normalizeTask(t))
-      : []
-    return {
-      books: Array.isArray(u.books)
-        ? (u.books as Record<string, unknown>[]).map((b) => normalizeBook(b))
-        : [],
-      tasks: normalizedTasks,
-      players: Array.isArray(u.players)
-        ? (u.players as Record<string, unknown>[]).map((p) => normalizePlayer(p))
-        : [],
-      stadium: normalizeStadium(u.stadium),
-      energy:
-        typeof u.energy === "number"
-          ? u.energy
-          : normalizedTasks.filter((t) => t.completed).length * settings.energyPerTask,
-      bonusCoins: typeof u.bonusCoins === "number" ? u.bonusCoins : STARTING_BONUS,
-      spentCoins: typeof u.spentCoins === "number" ? u.spentCoins : 0,
-      pitchPositions: normalizePitchPositions(u.pitchPositions),
-      currentFormation:
-        typeof u.currentFormation === "string" && ["4-3-3", "4-2-3-1", "3-5-2", "5-3-2", "4-4-2"].includes(u.currentFormation)
-          ? (u.currentFormation as FormationType)
-          : "4-3-3",
-      lineupAssignments: normalizeLineupAssignments(u.lineupAssignments),
-    }
-  } catch {
-    return null
+function normalizeUserData(raw: unknown): UserData {
+  const settings = loadSettings()
+  const u = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {}
+  const normalizedTasks = Array.isArray(u.tasks)
+    ? (u.tasks as Record<string, unknown>[]).map((t) => normalizeTask(t))
+    : []
+
+  return {
+    books: Array.isArray(u.books)
+      ? (u.books as Record<string, unknown>[]).map((b) => normalizeBook(b))
+      : [],
+    tasks: normalizedTasks,
+    players: Array.isArray(u.players)
+      ? (u.players as Record<string, unknown>[]).map((p) => normalizePlayer(p))
+      : [],
+    stadium: normalizeStadium(u.stadium),
+    energy:
+      typeof u.energy === "number"
+        ? u.energy
+        : normalizedTasks.filter((t) => t.completed).length * settings.energyPerTask,
+    bonusCoins: typeof u.bonusCoins === "number" ? u.bonusCoins : STARTING_BONUS,
+    spentCoins: typeof u.spentCoins === "number" ? u.spentCoins : 0,
+    pitchPositions: normalizePitchPositions(u.pitchPositions),
+    currentFormation:
+      typeof u.currentFormation === "string" && ["4-3-3", "4-2-3-1", "3-5-2", "5-3-2", "4-4-2"].includes(u.currentFormation)
+        ? (u.currentFormation as FormationType)
+        : "4-3-3",
+    lineupAssignments: normalizeLineupAssignments(u.lineupAssignments),
   }
 }
 
-function saveUserData(userId: UserId, data: UserData) {
-  if (typeof window === "undefined") return
+async function loadUserDataFromCloud(userId: UserId): Promise<UserData | null> {
   try {
-    localStorage.setItem(STORAGE_KEYS[userId], JSON.stringify(data))
+    const row = await loadGameState(userId)
+    if (!row?.data) return null
+    return normalizeUserData(row.data)
   } catch {
-    /* ignore quota / private mode */
+    return null
   }
 }
 
@@ -659,6 +661,8 @@ export function ReadingGamePage({ userId }: { userId: UserId }) {
     top: number
     left: number
   } | null>(null)
+  const [cloudConnected, setCloudConnected] = useState(true)
+  const [cloudLoadError, setCloudLoadError] = useState<string | null>(null)
 
   const pitchRef = useRef<HTMLDivElement>(null)
   const userDataRef = useRef(userData)
@@ -674,9 +678,16 @@ export function ReadingGamePage({ userId }: { userId: UserId }) {
   } | null>(null)
   const dragLastPctRef = useRef<{ top: number; left: number } | null>(null)
   const matchTimersRef = useRef<number[]>([])
+  const cloudSaveTimerRef = useRef<number | null>(null)
+  const skipNextCloudSyncRef = useRef(true)
+  const lastSyncedCloudPayloadRef = useRef("")
 
   userDataRef.current = userData
   currentUserRef.current = userId
+
+  const persistUserToCloud = useCallback((uid: UserId, data: UserData) => {
+    return saveGameState(uid, data as unknown as Record<string, unknown>)
+  }, [])
 
   const clientToPitchPct = useCallback((clientX: number, clientY: number) => {
     const el = pitchRef.current
@@ -776,21 +787,78 @@ export function ReadingGamePage({ userId }: { userId: UserId }) {
   }, [])
 
   useEffect(() => {
+    let cancelled = false
+
+    setStorageReady(false)
     setGameSettings(loadSettings())
-    const loaded = loadUserData(userId)
-    if (loaded) {
-      setUserData((prev) => ({
-        ...prev,
-        [userId]: loaded,
-      }))
+
+    void (async () => {
+      try {
+        const loaded = await loadUserDataFromCloud(userId)
+        if (cancelled) return
+        if (loaded) {
+          setUserData((prev) => ({
+            ...prev,
+            [userId]: loaded,
+          }))
+          setCloudLoadError(null)
+        } else {
+          setCloudLoadError("לא הצליח לטעון נתונים מהענן")
+        }
+        setCloudConnected(true)
+      } catch (err) {
+        setCloudConnected(false)
+        setCloudLoadError("בעיה בחיבור לענן - משתמש חדש או שגיאת רשת")
+      } finally {
+        setStorageReady(true)
+      }
+    })()
+
+    return () => {
+      cancelled = true
     }
-    setStorageReady(true)
+  }, [userId])
+
+  useEffect(() => {
+    skipNextCloudSyncRef.current = true
   }, [userId])
 
   useEffect(() => {
     if (!storageReady) return
-    saveUserData(userId, userData[userId])
-  }, [userData, storageReady, userId])
+
+    const payload = userData[userId]
+    const serialized = JSON.stringify(payload)
+
+    if (skipNextCloudSyncRef.current) {
+      skipNextCloudSyncRef.current = false
+      lastSyncedCloudPayloadRef.current = serialized
+      return
+    }
+
+    if (serialized === lastSyncedCloudPayloadRef.current) return
+
+    if (cloudSaveTimerRef.current) {
+      window.clearTimeout(cloudSaveTimerRef.current)
+    }
+
+    cloudSaveTimerRef.current = window.setTimeout(async () => {
+      try {
+        await persistUserToCloud(userId, payload)
+        lastSyncedCloudPayloadRef.current = serialized
+        setCloudConnected(true)
+      } catch (err) {
+        setCloudConnected(false)
+      }
+      cloudSaveTimerRef.current = null
+    }, 500)
+
+    return () => {
+      if (cloudSaveTimerRef.current) {
+        window.clearTimeout(cloudSaveTimerRef.current)
+        cloudSaveTimerRef.current = null
+      }
+    }
+  }, [userData, storageReady, userId, persistUserToCloud])
 
   useEffect(() => {
     setUserData((prev) => {
@@ -1312,6 +1380,21 @@ export function ReadingGamePage({ userId }: { userId: UserId }) {
             {"📚"} קראו ספרים, צברו מטבעות, ונצחו במשחקים! {"💰"}
           </p>
         </header>
+
+        {!cloudConnected && (
+          <Card className="mb-6 border-4 border-destructive/50 bg-destructive/5 shadow-lg animate-pulse">
+            <CardContent className="py-4">
+              <p className="text-center text-lg font-bold text-destructive flex items-center justify-center gap-2">
+                <span className="text-2xl">⚠️</span>
+                בעיה בחיבור לעננן - הנתונים לא נשמרים כשם רצוי
+                <span className="text-2xl">⚠️</span>
+              </p>
+              {cloudLoadError && (
+                <p className="text-center text-sm text-destructive/80 mt-2">({cloudLoadError})</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Current User */}
         <Card className="mb-6 border-3 border-accent/50 shadow-xl">
