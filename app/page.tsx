@@ -83,6 +83,8 @@ interface UserData {
   books: Book[]
   tasks: Task[]
   players: Player[]
+  teamSymbol: string
+  teamImage: string | null
   stadium: StadiumData
   energy: number
   bonusCoins: number
@@ -206,6 +208,10 @@ const storePlayers: StorePlayer[] = [
 
 // Starting bonus for new users
 const STARTING_BONUS = 30
+const DEFAULT_TEAM_SYMBOLS: Record<UserId, string> = {
+  roei: "🦁",
+  yair: "🐯",
+}
 
 // Fresh start function - creates clean user data
 const createFreshUserData = (): Record<UserId, UserData> => ({
@@ -213,6 +219,8 @@ const createFreshUserData = (): Record<UserId, UserData> => ({
     books: [],
     tasks: [],
     players: [],
+    teamSymbol: DEFAULT_TEAM_SYMBOLS.roei,
+    teamImage: null,
     stadium: {
       level: 1,
       upgrades: ["יציעים בסיסיים"],
@@ -234,6 +242,8 @@ const createFreshUserData = (): Record<UserId, UserData> => ({
     books: [],
     tasks: [],
     players: [],
+    teamSymbol: DEFAULT_TEAM_SYMBOLS.yair,
+    teamImage: null,
     stadium: {
       level: 1,
       upgrades: ["יציעים בסיסיים"],
@@ -379,7 +389,71 @@ function normalizeLineupAssignments(raw: unknown): Record<FormationType, Record<
   return out
 }
 
-function normalizeUserData(raw: unknown): UserData {
+function normalizeTeamSymbol(raw: unknown, fallback: string): string {
+  if (typeof raw !== "string") return fallback
+  const value = raw.trim()
+  return value.length > 0 ? value.slice(0, 2) : fallback
+}
+
+function normalizeTeamImage(raw: unknown): string | null {
+  if (typeof raw !== "string") return null
+  const value = raw.trim()
+  if (!value.startsWith("data:image/")) return null
+  return value
+}
+
+async function fileToResizedDataUrl(file: File): Promise<string> {
+  const fileDataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result ?? ""))
+    reader.onerror = () => reject(new Error("failed_to_read_file"))
+    reader.readAsDataURL(file)
+  })
+
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error("failed_to_load_image"))
+    image.src = fileDataUrl
+  })
+
+  const maxSize = 256
+  const ratio = Math.min(maxSize / img.width, maxSize / img.height, 1)
+  const width = Math.max(1, Math.round(img.width * ratio))
+  const height = Math.max(1, Math.round(img.height * ratio))
+
+  const canvas = document.createElement("canvas")
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext("2d")
+  if (!ctx) return fileDataUrl
+  ctx.drawImage(img, 0, 0, width, height)
+  return canvas.toDataURL("image/webp", 0.86)
+}
+
+function TeamMark({
+  symbol,
+  image,
+  className,
+}: {
+  symbol: string
+  image?: string | null
+  className?: string
+}) {
+  if (image) {
+    return (
+      <img
+        src={image}
+        alt="סמל קבוצה"
+        className={className ?? "h-10 w-10 rounded-full object-cover border-2 border-primary/40"}
+      />
+    )
+  }
+
+  return <span className={className}>{symbol}</span>
+}
+
+function normalizeUserData(raw: unknown, userId: UserId): UserData {
   const settings = loadSettings()
   const u = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {}
   const normalizedTasks = Array.isArray(u.tasks)
@@ -394,6 +468,8 @@ function normalizeUserData(raw: unknown): UserData {
     players: Array.isArray(u.players)
       ? (u.players as Record<string, unknown>[]).map((p) => normalizePlayer(p))
       : [],
+    teamSymbol: normalizeTeamSymbol(u.teamSymbol, DEFAULT_TEAM_SYMBOLS[userId]),
+    teamImage: normalizeTeamImage(u.teamImage),
     stadium: normalizeStadium(u.stadium),
     energy:
       typeof u.energy === "number"
@@ -414,7 +490,7 @@ async function loadUserDataFromCloud(userId: UserId): Promise<UserData | null> {
   try {
     const row = await loadGameState(userId)
     if (!row?.data) return null
-    return normalizeUserData(row.data)
+    return normalizeUserData(row.data, userId)
   } catch {
     return null
   }
@@ -883,6 +959,8 @@ export function ReadingGamePage({ userId }: { userId: UserId }) {
   const tasks = userData[currentUser].tasks
   const players = userData[currentUser].players
   const stadium = userData[currentUser].stadium ?? DEFAULT_STADIUM
+  const teamSymbol = userData[currentUser].teamSymbol ?? DEFAULT_TEAM_SYMBOLS[currentUser]
+  const teamImage = userData[currentUser].teamImage ?? null
   const energy = userData[currentUser].energy ?? 0
   const pitchPositions = userData[currentUser].pitchPositions ?? {}
   const currentFormation = userData[currentUser].currentFormation ?? "4-3-3"
@@ -1057,6 +1135,90 @@ export function ReadingGamePage({ userId }: { userId: UserId }) {
         ...prev[currentUser],
         players: [...prev[currentUser].players, newPlayer],
         spentCoins: (prev[currentUser].spentCoins ?? 0) + storePlayer.price,
+      },
+    }))
+  }
+
+  const getPlayerSellValue = (player: Player) => {
+    const storeDef = storePlayers.find((s) => s.id === player.storeId)
+    return storeDef?.price ?? Math.max(1, Math.round(player.rating * 2))
+  }
+
+  const sellPlayer = (playerId: number) => {
+    const player = players.find((p) => p.id === playerId)
+    if (!player) return
+
+    const refund = getPlayerSellValue(player)
+    const shouldSell = window.confirm(
+      `למכור את ${player.name} ולקבל ${refund} מטבעות בחזרה?`
+    )
+    if (!shouldSell) return
+
+    setUserData((prev) => {
+      const current = prev[currentUser]
+      const nextLineupAssignments = {
+        ...current.lineupAssignments,
+        "4-3-3": Object.fromEntries(
+          Object.entries(current.lineupAssignments["4-3-3"] ?? {}).filter(([, assignedId]) => assignedId !== playerId)
+        ),
+        "4-2-3-1": Object.fromEntries(
+          Object.entries(current.lineupAssignments["4-2-3-1"] ?? {}).filter(([, assignedId]) => assignedId !== playerId)
+        ),
+        "3-5-2": Object.fromEntries(
+          Object.entries(current.lineupAssignments["3-5-2"] ?? {}).filter(([, assignedId]) => assignedId !== playerId)
+        ),
+        "5-3-2": Object.fromEntries(
+          Object.entries(current.lineupAssignments["5-3-2"] ?? {}).filter(([, assignedId]) => assignedId !== playerId)
+        ),
+        "4-4-2": Object.fromEntries(
+          Object.entries(current.lineupAssignments["4-4-2"] ?? {}).filter(([, assignedId]) => assignedId !== playerId)
+        ),
+      }
+      const nextPitchPositions = { ...current.pitchPositions }
+      delete nextPitchPositions[String(playerId)]
+
+      return {
+        ...prev,
+        [currentUser]: {
+          ...current,
+          players: current.players.filter((p) => p.id !== playerId),
+          spentCoins: Math.max(0, (current.spentCoins ?? 0) - refund),
+          pitchPositions: nextPitchPositions,
+          lineupAssignments: nextLineupAssignments,
+        },
+      }
+    })
+  }
+
+  const updateTeamSymbol = (value: string) => {
+    const nextSymbol = value.trim().slice(0, 2)
+    setUserData((prev) => ({
+      ...prev,
+      [currentUser]: {
+        ...prev[currentUser],
+        teamSymbol: nextSymbol.length > 0 ? nextSymbol : DEFAULT_TEAM_SYMBOLS[currentUser],
+      },
+    }))
+  }
+
+  const updateTeamImage = async (file: File) => {
+    if (!file.type.startsWith("image/")) return
+    const imageDataUrl = await fileToResizedDataUrl(file)
+    setUserData((prev) => ({
+      ...prev,
+      [currentUser]: {
+        ...prev[currentUser],
+        teamImage: imageDataUrl,
+      },
+    }))
+  }
+
+  const clearTeamImage = () => {
+    setUserData((prev) => ({
+      ...prev,
+      [currentUser]: {
+        ...prev[currentUser],
+        teamImage: null,
       },
     }))
   }
@@ -1401,7 +1563,10 @@ export function ReadingGamePage({ userId }: { userId: UserId }) {
           <CardContent className="py-5">
             <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:justify-between">
               <p className="text-center text-2xl font-bold text-muted-foreground sm:text-right">
-                {"👤"} שחקן: <span className="text-primary">{userNames[currentUser]}</span>
+                <span className="inline-flex items-center gap-2">
+                  <TeamMark symbol={teamSymbol} image={teamImage} className="h-10 w-10 rounded-full object-cover border-2 border-primary/40" />
+                  שחקן: <span className="text-primary">{userNames[currentUser]}</span>
+                </span>
               </p>
               <Link href="/" className="inline-flex">
                 <Button variant="secondary" className="text-lg font-bold">
@@ -1988,6 +2153,50 @@ export function ReadingGamePage({ userId }: { userId: UserId }) {
             </CardHeader>
             <CardContent className="pt-6">
               <div dir="rtl" className="mb-6 rounded-2xl border-2 border-primary/30 bg-primary/10 p-4">
+                <p className="text-lg font-black text-primary">סמל הקבוצה של {userNames[currentUser]}</p>
+                <p className="mt-1 text-xs text-muted-foreground">אפשר לבחור אמוג'י/טקסט קצר וגם להעלות תמונה. אם יש תמונה, היא תוצג במקום הסמל.</p>
+                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <Input
+                    type="text"
+                    dir="rtl"
+                    value={teamSymbol}
+                    onChange={(e) => updateTeamSymbol(e.target.value)}
+                    maxLength={2}
+                    className="h-11 w-full text-2xl sm:max-w-28"
+                    aria-label="סמל קבוצה"
+                  />
+                  <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-card px-4 py-2 text-center text-xl font-black">
+                    <span>תצוגה:</span>
+                    <TeamMark symbol={teamSymbol} image={teamImage} className="h-10 w-10 rounded-full object-cover border-2 border-primary/40" />
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    className="h-11 w-full sm:max-w-sm"
+                    aria-label="העלאת תמונת סמל קבוצה"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      void updateTeamImage(file)
+                      e.currentTarget.value = ""
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={clearTeamImage}
+                    disabled={!teamImage}
+                    className="sm:w-auto"
+                  >
+                    הסר תמונה
+                  </Button>
+                </div>
+              </div>
+
+              <div dir="rtl" className="mb-6 rounded-2xl border-2 border-primary/30 bg-primary/10 p-4">
                 <p className="text-lg font-black text-primary">{"🏟️"} האצטדיון של {userNames[currentUser]}</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">
                   רמה: <span className="font-black">{stadium.level}</span>
@@ -2078,6 +2287,9 @@ export function ReadingGamePage({ userId }: { userId: UserId }) {
                                   {"🏟️"} {player.teamName}
                                 </p>
                               )}
+                              <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mt-1">
+                                {"💸"} שווי מכירה: {getPlayerSellValue(player)} מטבעות
+                              </p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 bg-card rounded-xl px-5 py-3 shadow-md border-2 border-secondary/30 self-start">
@@ -2176,6 +2388,17 @@ export function ReadingGamePage({ userId }: { userId: UserId }) {
                               {"⚡"} +{PLAYER_REFILL_AMOUNT} ({PLAYER_REFILL_USER_ENERGY_COST} אנרגיית משתמש)
                             </Button>
                           </div>
+                        </div>
+                        <div className="pt-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => sellPlayer(player.id)}
+                            className="w-full border-destructive/40 text-destructive hover:bg-destructive/10"
+                          >
+                            {"💸"} מכור שחקן וקבל {getPlayerSellValue(player)} מטבעות
+                          </Button>
                         </div>
                       </div>
                     )
@@ -2471,6 +2694,50 @@ export function ReadingGamePage({ userId }: { userId: UserId }) {
 }
 
 export default function HomePage() {
+  const [homeTeamMarks, setHomeTeamMarks] = useState<Record<UserId, { symbol: string; image: string | null }>>({
+    roei: { symbol: DEFAULT_TEAM_SYMBOLS.roei, image: null },
+    yair: { symbol: DEFAULT_TEAM_SYMBOLS.yair, image: null },
+  })
+
+  useEffect(() => {
+    let cancelled = false
+
+    void (async () => {
+      try {
+        const loaded = await Promise.all(
+          (["roei", "yair"] as UserId[]).map(async (uid) => {
+            const data = await loadUserDataFromCloud(uid)
+            return [
+              uid,
+              {
+                symbol: data?.teamSymbol ?? DEFAULT_TEAM_SYMBOLS[uid],
+                image: data?.teamImage ?? null,
+              },
+            ] as const
+          })
+        )
+
+        if (cancelled) return
+
+        setHomeTeamMarks({
+          roei: loaded.find(([uid]) => uid === "roei")?.[1] ?? { symbol: DEFAULT_TEAM_SYMBOLS.roei, image: null },
+          yair: loaded.find(([uid]) => uid === "yair")?.[1] ?? { symbol: DEFAULT_TEAM_SYMBOLS.yair, image: null },
+        })
+      } catch {
+        if (!cancelled) {
+          setHomeTeamMarks({
+            roei: { symbol: DEFAULT_TEAM_SYMBOLS.roei, image: null },
+            yair: { symbol: DEFAULT_TEAM_SYMBOLS.yair, image: null },
+          })
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
       <div className="mx-auto max-w-3xl">
@@ -2482,13 +2749,23 @@ export default function HomePage() {
         <Card className="border-3 border-primary/30 shadow-xl">
           <CardContent className="grid gap-4 p-6 md:grid-cols-2" dir="rtl">
             <Link href="/roei" className="block">
-              <Button className="h-28 w-full text-4xl font-black">{"👦"} רועי</Button>
+              <Button className="h-28 w-full text-4xl font-black inline-flex items-center gap-3">
+                <TeamMark symbol={homeTeamMarks.roei.symbol} image={homeTeamMarks.roei.image} className="h-10 w-10 rounded-full object-cover border-2 border-primary/40" />
+                רועי
+              </Button>
             </Link>
             <Link href="/yair" className="block">
-              <Button className="h-28 w-full text-4xl font-black" variant="secondary">{"👦"} יאיר</Button>
+              <Button className="h-28 w-full text-4xl font-black inline-flex items-center gap-3" variant="secondary">
+                <TeamMark symbol={homeTeamMarks.yair.symbol} image={homeTeamMarks.yair.image} className="h-10 w-10 rounded-full object-cover border-2 border-primary/40" />
+                יאיר
+              </Button>
             </Link>
           </CardContent>
         </Card>
+
+        <p dir="rtl" className="mt-3 text-center text-sm font-semibold text-muted-foreground">
+          שינוי סמל קבוצה: נכנסים לכל ילד לעמוד הקבוצה ומעדכנים את שדה "סמל הקבוצה".
+        </p>
 
         <div className="mt-4 text-center" dir="rtl">
           <Link href="/admin" className="inline-block">
